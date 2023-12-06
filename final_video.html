@@ -866,8 +866,10 @@
         //camera.lookAt(50, 100, -5);
 
         if(difference%27 <3){
+            if(sharkFlag && shark2Flag){
             shark.position.set(0, -100, 0);
             shark2.position.set(0, -100, 0);
+            }
             var keys = keyframeInterp(subMove, 3, clock.getElapsedTime() - startTime);
             camera.position.set(70, 0, -5);
             //camera.lookAt(sub);
