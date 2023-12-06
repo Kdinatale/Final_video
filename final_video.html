@@ -1,0 +1,1107 @@
+<!DOCTYPE html>
+<head>
+<title>Final Project</title>
+<script src="https://csc-vu.github.io/lib/three.js"></script>
+<script src="https://csc-vu.github.io/lib/OrbitControls.js"></script>
+<script src="https://csc-vu.github.io/lib/KeyboardState.js"></script>
+<script src="https://csc-vu.github.io/lib/GLTFLoader.js"></script>
+
+
+<script>
+    var scene, camera, renderer; // Three.js rendering basics
+    var canvas; // The canvas on which the image is rendered
+    var sharkFlag;
+    var shark2Flag;
+    var shark, shark2;
+    var cage;
+    var bubbles;
+    var spotLight;
+    var boat;
+    var sub;
+    var sphereBase;
+    var ambientLight;
+
+    var clock = new THREE.Clock();
+
+    var startTime = clock.getElapsedTime();
+
+     var keyframeCageFall = [
+        // [time stamp, y position]
+        [0, 100],
+        [0.5, 50],
+        [1, 0]
+    ]; 
+/*
+    var keyframeCageFallCamera = [
+        // [time stamp, y position]
+        [0, 100],
+        [0.5, 75],
+        [0.62, 70],
+        [1, 0]
+    ]; 
+*/
+    var personLookUp = [
+        // [time stamp, y position]
+        [0, 10.189999999850897],
+        [.25, 10.189999999850897],
+        [0.5, 8],
+        [1, 20]
+    ]; 
+
+    var personLookRight = [
+        //x, y, z position
+/*        [0, 50, 20, -5],
+        [0.1, 50, 20, -5],
+        [.5, 50, 10, -20],
+        [.6, 50, 10, -20],
+        [1, 50, 20, -5],
+        */
+        [0, 50, 20, -20],
+        [0.1, 50, 20, -20],
+        [.5, 50, 10, -5],
+        [.6, 50, 10, -5],
+        [1, 50, 20, -20],
+    ];
+
+    var personLookLeft = [
+        //x, y, z position
+       // [0, 50, 20, -5],
+        [0, 50, 20, -20],
+        [.5, 25, 10, -10]
+        [1, 0, 10, -10],
+        //[0.9, 50, 10, -20],
+        //[1, 50, 20, -5],
+        //[0.5, 50, 5, -20],
+        //[1, 50, 20, -5]
+    ];
+    //cage.position.set(50, 100, -5);
+
+    var personLookRight2 = [
+        //x, y, z position
+       // [0, 50, 20, -5],
+        [0, 50, 10, 5],
+        [.5, 8.5*Math.cos(2*angle)/2, 0, -7.5],
+        [1, 8.5*Math.cos(2*angle)+50, 0, -15],
+        //[0.5, 50, 5, -20],
+        //[1, 50, 20, -5]
+    ];
+
+    var shark1Attack = [
+        [0, 8.5*Math.cos(2*.1)+50, 10, -10],
+        [0.5, 8.5*Math.cos(2*.1), 5, 0],
+        [1, 8.5*Math.cos(2*.1)+50, 0, 8.5*Math.sin(2*angle)], 
+    ];
+
+    var boatMove = [
+        //x position
+        [0, 0],
+        [0.5, 80],
+        [.9, 100],
+        [1, 100]
+    ];
+
+    var subMove = [
+        [0, 0, 30, -50],
+        [.5, -15, 20, -50],
+        [1, -30, 8, -50],
+    ];
+
+    var boatLook = [
+        [0, -50, 8, -50],
+        [.5, -50, 50, -30],
+        [1, -50, 100, -5]
+    ];
+
+    // Create a camera, sitting on the positive z-axis.  The camera is not part of the scene
+    function createCamera() {
+        camera = new THREE.PerspectiveCamera(40, canvas.width/canvas.height, 0.1, 500);
+        camera.position.set(0,20,170); // change parameters as needed
+
+        mouse = new THREE.OrbitControls(camera, renderer.domElement);
+    }
+
+   // add lights to the scene
+    function createLights()
+    {
+        var ambient = new THREE.AmbientLight(0x404040); // soft white
+        scene.add(ambient);
+
+        spotLight = new THREE.SpotLight("white", 0.6); 
+
+        spotLight.position.set(camera.position.x, camera.position.y, camera.position.z);            // position, relative to parent shade
+        spotLight.target.position.set(0,0,0);  // direction, relative to parent shade
+        spotLight.angle = Math.atan(4/3.5); // to match the shade angle 
+        spotLight.penumbra = 0.1;                   // outer 10% of spotlight cone fades out
+
+        scene.add(spotLight);
+        scene.add(spotLight.target);
+ 
+    }
+
+    function createBase(radius, height){
+        var base = new THREE.Object3D();
+
+        // TODO Step 4: texture the base
+        texLoader = new THREE.TextureLoader();
+
+        var texture = texLoader.load("rust.jpg")
+
+        var mat = new THREE.MeshPhongMaterial( {map: texture, color: "gray" } );
+
+        // SphereGeometry(radius, horizSeg, vertSeg, horizStartAng, horizLenAngle, vertStartAng, vertLenAng )
+        var geom = new THREE.SphereGeometry(radius, 32, 32, 0, 2*Math.PI, 0, Math.PI/2 );
+        var mesh = new THREE.Mesh(geom, mat);
+        mesh.scale.y = height/radius;
+        mesh.position.y = -height;
+        base.add(mesh);
+
+        // CircleGeometry(radius, segments) 
+        var capGeom = new THREE.CircleGeometry(radius, 32);
+        var capMesh = new THREE.Mesh(capGeom, mat);
+        capMesh.rotation.x = Math.PI / 2;
+        mesh.add(capMesh);
+
+        return base; 
+    }
+
+    function createSub(){
+        var radius = 5;
+        var baseH = 15;
+
+        texLoader = new THREE.TextureLoader();
+
+        var texture = texLoader.load("rust.jpg");
+
+        texture.wrapS = THREE.MirroredRepeatWrapping;
+        texture.wrapT = THREE.MirroredRepeatWrapping;
+        texture.repeat.set( 4, 4 ); // twice in U and three times in V
+
+        var textureEnd = texLoader.load("rustEnd.jpg");
+
+
+        var textureWindow = texLoader.load("rustWindow2.jpg");
+
+        var submarine = new THREE.Object3D();
+
+        //textureEnd.wrapS = THREE.MirroredRepeatWrapping;
+        //textureEnd.wrapT = THREE.MirroredRepeatWrapping;
+        //textureEnd.repeat.set(1, 0); // twice in U and three times in V
+
+        var geom = new THREE.CylinderGeometry(radius, radius, baseH, 43, 43, true); 
+        var material = new THREE.MeshPhongMaterial( {map: texture} ); 
+        var base = new THREE.Mesh( geom, material ); 
+        base.rotation.z = Math.PI/2;
+
+        submarine.add(base);
+
+        var geomSphere = new THREE.SphereGeometry(radius, 32, 32, 0, 6.28318, 0, 1.6);
+        var materialSphere = new THREE.MeshPhongMaterial( {map: textureEnd} );
+        var endL = new THREE.Mesh(geomSphere, materialSphere);
+        //base.add(endL);
+        endL.position.y += baseH/2;
+        var geomEndR = new THREE.CylinderGeometry(0, radius, baseH/3, 43, 43, true);
+        var endR = new THREE.Mesh(geomEndR, materialSphere);
+        base.add(endL);
+        //endR.position.z = 10;
+        endR.position.y = - baseH/2-baseH/6;
+        //end.position.x += baseH/2+radius/2;
+        endR.rotation.z = Math.PI;
+
+
+        var geomWindow = new THREE.TorusGeometry( 1.3, .5, 17, 100 );
+        var materialWindow = new THREE.MeshPhongMaterial({map: textureWindow});
+        var windowFrontFirst = new THREE.Mesh(geomWindow, materialWindow);
+        windowFrontFirst.position.z += radius;
+        windowFrontFirst.position.y += baseH/3;
+        base.add(windowFrontFirst);
+
+        var windowFrontSecond = new THREE.Mesh(geomWindow, materialWindow);
+        windowFrontSecond.position.z += radius;
+        //windowFirst.position.y += baseH/3;
+        base.add(windowFrontSecond);
+
+        var windowFrontThird = new THREE.Mesh(geomWindow, materialWindow);
+        windowFrontThird.position.z += radius;
+        windowFrontThird.position.y -= baseH/3;
+        base.add(windowFrontThird);
+
+        //back windows 
+
+        var windowBackFirst = new THREE.Mesh(geomWindow, materialWindow);
+        windowBackFirst.position.z -= radius;
+        windowBackFirst.position.y += baseH/3;
+        base.add(windowBackFirst);
+
+        var windowBackSecond = new THREE.Mesh(geomWindow, materialWindow);
+        windowBackSecond.position.z -= radius;
+        //windowFirst.position.y += baseH/3;
+        base.add(windowBackSecond);
+
+        var windowBackThird = new THREE.Mesh(geomWindow, materialWindow);
+        windowBackThird.position.z -= radius;
+        windowBackThird.position.y -= baseH/3;
+        base.add(windowBackThird);
+
+        //propellers 
+        //var sphereBaseGeom = new THREE.SphereGeometry(2, 32, 32, 0, 6.28, 3.42, .49);
+        var sphereBaseGeom = new THREE.CylinderGeometry(radius/2, 1, 3, 9, 1, true);
+        var sphereBaseMaterial = new THREE.MeshPhongMaterial( {map: texture} ); 
+        sphereBase = new THREE.Mesh(sphereBaseGeom, sphereBaseMaterial);
+        sphereBase.position.y -= baseH-baseH/3+1;
+
+        base.add(endR);
+        base.add(sphereBase);
+
+        var propeller1 = createBase(2, .5);
+        propeller1.scale.set(1/2, 1, 1);
+        //propeller1.rotation.z = Math.PI;
+        propeller1.position.y -= 2;
+        propeller1.position.z += 2;
+        propeller1.rotation.x += Math.PI/5;
+        sphereBase.add(propeller1);
+
+        var propeller2 = createBase(2, .5);
+        propeller2.scale.set(1/2, 1, 1);
+        propeller2.position.y -= 2;
+        propeller2.position.z -= 2;
+        propeller2.rotation.x -= Math.PI/5;
+        sphereBase.add(propeller2);
+
+        var propeller3 = createBase(2, .5);
+        propeller3.scale.set(1/2, 1, 1);
+        //propeller3.rotation.z = Math.PI;
+        propeller3.position.y -= 3;
+        propeller3.position.x -= 2;
+        propeller3.rotation.z += Math.PI/2;
+        propeller3.rotation.x += Math.PI/2;
+        propeller3.rotation.y -= Math.PI/5;
+        sphereBase.add(propeller3);
+
+        var propeller4 = createBase(2, .5);
+        propeller4.scale.set(1/2, 1, 1);
+        //propeller4.rotation.z = Math.PI;
+        propeller4.position.y -= 3;
+        propeller4.position.x += 2;
+        propeller4.rotation.z -= Math.PI/2;
+        propeller4.rotation.x -= Math.PI/2;
+        propeller4.rotation.y -= Math.PI/5;
+        sphereBase.add(propeller4);
+
+        return submarine;
+
+        sphereBase.rotation.x = Math.PI;
+    }
+    
+    function createBar(radius, height){
+        texLoader = new THREE.TextureLoader();
+
+        var texture = texLoader.load("bareMetal.jpg");
+
+        var cylinderGeom = new THREE.CylinderGeometry(radius, radius, height);
+        var material = new THREE.MeshPhongMaterial({map: texture});
+        var bar = new THREE.Mesh(cylinderGeom, material);
+
+        return bar;
+    }
+
+    function createCageSide(){
+        var barH = 6;
+        var barHT = 10;
+        var barR = .3;
+        var planeHW = 10;
+
+        var side = new THREE.Object3D();
+
+        var backBar1 = createBar(barR, barH);
+        side.add(backBar1);
+        backBar1.position.y = barH/2;
+        backBar1.position.z += barR;
+
+        var backBar2 = createBar(barR, barHT);
+        side.add(backBar2);
+        backBar2.position.y = barHT/2;
+        backBar2.position.x += planeHW/2-barR;
+        backBar2.position.z += barR;
+
+        var backBar3 = createBar(barR, barHT);
+        side.add(backBar3);
+        backBar3.position.y = barHT/2;
+        backBar3.position.x -= planeHW/2-barR;
+        backBar3.position.z += barR;
+
+        var backBar4 = createBar(barR, barH);
+        side.add(backBar4);
+        backBar4.position.y = barH/2;
+        backBar4.position.x -= planeHW/4-barR/2;
+        backBar4.position.z += barR;
+
+        var backBar5 = createBar(barR, barH);
+        side.add(backBar5);
+        backBar5.position.y = barH/2;
+        backBar5.position.x += planeHW/4-barR/2;
+        backBar5.position.z += barR;
+
+        var backBar6 = createBar(barR, planeHW);
+        side.add(backBar6);
+        backBar6.rotation.z += Math.PI/2;
+        backBar6.position.y = planeHW;
+        //bar6.position.x += planeHW/4+barR/2;
+        backBar6.position.z += barR;
+
+        var horizontal = createBar(barR, barHT);
+        side.add(horizontal);
+        horizontal.rotation.z += Math.PI/2;
+        horizontal.position.y += barH+barR;;
+        horizontal.position.z += barR;
+
+        var horizontal2 = createBar(barR, barHT);
+        side.add(horizontal2);
+        horizontal2.rotation.z += Math.PI/2;
+        horizontal2.position.y += barH + barH/3;
+        horizontal2.position.z += barR;
+
+        var vertical = createBar(barR, barHT);
+        side.add(vertical);
+        //vertical.rotation.z += Math.PI/2;
+        vertical.position.y += barH + barH/3-.25;
+        vertical.scale.y = 1/2;
+        vertical.position.z += barR;
+
+        var vertical2 = createBar(barR, barHT);
+        side.add(vertical2);
+        //vertical.rotation.z += Math.PI/2;
+        vertical2.position.y += barH + barH/2;
+        vertical2.scale.y = 1/4;
+        vertical2.position.x -= planeHW/4+barR/2;
+        vertical2.position.z += barR;
+
+        var vertical3 = createBar(barR, barHT);
+        side.add(vertical3);
+        //vertical.rotation.z += Math.PI/2;
+        vertical3.position.y += barH + barH/2;
+        vertical3.scale.y = 1/4;
+        vertical3.position.x += planeHW/4+barR/2;
+        vertical3.position.z += barR;
+
+        return side;
+    }
+
+    function createCage(){
+        var barH = 6;
+        var barHT = 10;
+        var barR = .3;
+        var planeHW = 10;
+
+        var cage = new THREE.Object3D();
+        texLoader = new THREE.TextureLoader();
+
+        var textureBottom = texLoader.load("metalFloor.jpg");
+
+        var planeGeom = new THREE.BoxGeometry(planeHW, planeHW, .5);
+        var planeMaterial = new THREE.MeshPhongMaterial({map: textureBottom, side: THREE.DoubleSide});
+        var cageBottom = new THREE.Mesh(planeGeom, planeMaterial);
+
+        cageBottom.position.z +=5;
+        cageBottom.rotation.x -= Math.PI/2;
+
+        cage.add(cageBottom);
+
+        var backSide = createCageSide();
+        cage.add(backSide);
+
+        var frontSide = createCageSide();
+        cage.add(frontSide);
+        frontSide.position.z += planeHW- barR*2;
+
+        var leftSide = createCageSide();
+        cage.add(leftSide);
+        leftSide.rotation.y += Math.PI/2;
+        leftSide.position.x -= planeHW/2;
+        leftSide.position.z += planeHW/2;
+
+        var rightSide = createCageSide();
+        cage.add(rightSide);
+        rightSide.rotation.y += Math.PI/2;
+        rightSide.position.x += planeHW/2-2*barR;
+        rightSide.position.z += planeHW/2;
+
+        var top1 = createBar(barR, barHT);
+        top1.rotation.z += Math.PI/2;
+        top1.position.y += planeHW;
+        top1.position.z += planeHW/2;
+        cage.add(top1);
+
+        var top2 = createBar(barR, barHT);
+        top2.rotation.z += Math.PI/2;
+        top2.position.y += planeHW;
+        top2.position.z += planeHW/4-barR/2;
+        cage.add(top2);
+
+        var top3 = createBar(barR, barHT);
+        top3.rotation.z += Math.PI/2;
+        top3.position.y += planeHW;
+        top3.position.z += planeHW -planeHW/4+barR/2;
+        cage.add(top3);
+
+        var chain = createChain();
+        cage.add(chain);
+        chain.position.y += planeHW + 1.7/2;
+        chain.position.z -= planeHW+planeHW/2;
+
+        return cage;
+    }
+
+/*
+    function createLights()
+    {
+        // Ambient Light (color, intensity)
+        var ambient = new THREE.AmbientLight(0x404040); // soft white
+        scene.add(ambient);
+
+        // DirectionalLight (color, intensity) in the direction the camera faces
+        eyeLight = new THREE.DirectionalLight( "white", 0.7 );  // global, do not redefine here
+        eyeLight.position.set(camera.position.x,camera.position.y,camera.position.z);  // camera viewpoint
+        scene.add(eyeLight);
+
+        // Dim DirectionalLight (color, intensity) shining from above
+        var topLight = new THREE.DirectionalLight( "white", 0.3 ); 
+        topLight.position.set(50,150,-5);
+        scene.add( topLight );
+    }
+    */
+
+    function createGround(){
+        texLoader = new THREE.TextureLoader();
+
+        var texture = texLoader.load("sand.jpg");
+
+        var planeHW = 1000;
+
+        var planeGeom = new THREE.PlaneGeometry(planeHW, planeHW);
+        var planeMaterial = new THREE.MeshPhongMaterial({map: texture, side: THREE.DoubleSide}); 
+        var ground = new THREE.Mesh(planeGeom, planeMaterial);
+
+        ground.rotation.x += Math.PI/2;
+
+        return ground;
+    }
+
+    function createWater(){
+        texLoader = new THREE.TextureLoader();
+
+        var texture = texLoader.load("water.jpg");
+
+        var sphereRadius = 200;
+        var sphereGeom = new THREE.SphereGeometry(sphereRadius, 40, 40, 0, Math.PI);
+        // SphereGeometry(radius, horizSeg, vertSeg, horizStartAng, horizLenAngle, vertStartAng, vertLenAng )
+        //var sphereMaterial = new THREE.MeshPhongMaterial({color: 'lightblue', side: THREE.DoubleSide});
+        var sphereMaterial = new THREE.MeshPhongMaterial({map: texture, side: THREE.DoubleSide});
+
+        var water = new THREE.Mesh(sphereGeom, sphereMaterial);
+
+        water.rotation.x -= Math.PI/2;
+
+        return water;
+    }
+
+    function createBoat(){
+        var boat = new THREE.Object3D();
+
+        var boatBaseGeom = new THREE.CylinderGeometry(12.3, 12.3, 30, 8, 1, true, 0, 2.8);
+        var boatMaterial = new THREE.MeshPhongMaterial({color: 'gray', side: THREE.DoubleSide});
+        var boatBase = new THREE.Mesh(boatBaseGeom, boatMaterial);
+        boat.add(boatBase);
+
+        var boatFrontGeom = new THREE.CylinderGeometry(0, 12.3, 30, 8, 1, true, 0, 2.8);
+        var boatFront = new THREE.Mesh(boatFrontGeom, boatMaterial);
+        boat.add(boatFront);
+        boatFront.position.y += 30;
+
+        var boatBackGeom = new THREE.CylinderGeometry(12.3, 0, 30, 8, 1, true, 0, 2.8);
+        var boatBack = new THREE.Mesh(boatFrontGeom, boatMaterial);
+        boat.add(boatBack);
+        boatBack.position.y -= 30;
+        boatBack.rotation.x -= Math.PI;
+        boatBack.rotation.y += .35;
+
+        boat.rotation.z -= Math.PI/2;
+        boat.position.y += 150;
+        boat.position.x += 50;
+
+        return boat;
+    }
+
+    function createCircle(){
+        var radius = 1.7;
+        var linkGeom = new THREE.TorusGeometry(radius, 0.6, 16, 45);
+
+        var linkMaterial = new THREE.MeshPhongMaterial({color: 'gray'});
+        var link = new THREE.Mesh(linkGeom, linkMaterial);
+        link.scale.set(.25, .4, .4);
+        link.position.z = 20;
+
+        return link;
+    }
+
+    function createLink(){
+        var radius = 1.7;
+        var link = new THREE.Object3D();
+
+        var link1 = createCircle();
+        //link1.position.y += radius;
+        link.add(link1);
+
+        var link2 = createCircle();2
+        link2.position.y += radius/2;
+        link2.rotation.y = Math.PI/2;
+
+        link.add(link2);
+
+        //var link2 = createCircle();
+        //link2.position.y += radius+radius/2;
+        //link2.rotation.y += Math.PI/2;
+        //linkMesh.position.y += 15;
+        //link1.add(link2);
+
+        return link;
+
+    }
+
+    function createChain(){
+        var radius = 1.7;
+        var chain = new THREE.Object3D;
+
+        var link = createLink();
+        link.position.y += radius;
+
+        chain.add(link);
+
+        var link2 = createLink();
+        chain.add(link2);
+
+        var link3 = createLink();
+        chain.add(link3);
+        link3.position.y +=2*radius;
+
+        var link4 = createLink();
+        chain.add(link4);
+        link4.position.y +=3*radius;
+
+        var link5 = createLink();
+        chain.add(link5);
+        link5.position.y += 4*radius;
+
+        var link6 = createLink();
+        chain.add(link6);
+
+        link6.position.y += 5*radius;
+
+        var link7 = createLink();
+        chain.add(link7);
+
+        link7.position.y += 6*radius;
+
+        var link8 = createLink();
+        chain.add(link8);
+
+        link8.position.y += 7*radius;
+
+        var link9 = createLink();
+        chain.add(link9);
+
+        link9.position.y += 8*radius;
+
+        var link10 = createLink();
+        chain.add(link10);
+
+        link10.position.y += 9*radius;
+
+        var link11 = createLink();
+        chain.add(link11);
+
+        link11.position.y += 10*radius;
+
+        var link12 = createLink();
+        chain.add(link12);
+
+        link12.position.y += 11*radius;
+
+        var link13 = createLink();
+        chain.add(link13);
+
+        link13.position.y += 12*radius;
+
+        var link14 = createLink();
+        chain.add(link14);
+
+        link14.position.y += 13*radius;
+
+        var link15 = createLink();
+        chain.add(link15);
+
+        link15.position.y += 14*radius;
+
+        var link16 = createLink();
+        chain.add(link16);
+
+        link16.position.y += 15*radius;
+
+        return chain;
+
+    }
+    function createBubble(radius){
+        var geom = new THREE.SphereGeometry(radius, 32, 16 ); 
+        var material = new THREE.MeshPhongMaterial({color: 'white'});
+        var bubble = new THREE.Mesh(geom, material);
+
+        return bubble;
+    }
+
+    function createCageBubbles(){
+        var bubbles = new THREE.Object3D();
+
+        var bubble1 = createBubble(.25);
+        bubble1.position.x += 5;
+        bubbles.add(bubble1);
+
+        var bubble2 = createBubble(.25);
+        bubble2.position.x += 7;
+        bubble2.position.z -= 2;
+        bubble2.position.y += 3;
+        bubbles.add(bubble2);
+
+        var bubble3 = createBubble(.25);
+        bubble3.position.x += 5.5;
+        bubble3.position.z -= 1;
+        bubble3.position.y += 1.5;
+        bubbles.add(bubble3);
+        //console.log(bubble.position.x, bubble.position.z);
+
+        var bubble4 = createBubble(.25); 
+        bubble4.position.x += 6.5;
+        bubble4.position.z += 1;
+        bubble4.position.y += 2.5;
+        bubbles.add(bubble4);
+
+        var bubble5 = createBubble(.25);
+        bubble5.position.x += 6;
+        bubble5.position.y += .5;
+        bubbles.add(bubble5);
+
+        return bubbles;
+    }
+
+    function loadModels(){
+        const loader = new THREE.GLTFLoader();
+        const url = './shark_glb.glb';
+        //const url2 = 'xander-avaturn-model.glb';
+
+        function onLoad ( gltf ) {
+            shark = gltf.scene;
+            shark.scale.set(0.75, 0.75, 0.5);
+            shark.rotation.y = Math.PI/2;
+            scene.add(shark);
+
+            sharkFlag = true;
+        }       
+        loader.load(url, onLoad);
+        //loader.load(url2, onLoad);
+
+    }
+
+    function loadSharkModels(){
+        const loader = new THREE.GLTFLoader();
+        const url = './shark_glb.glb';
+        //const url2 = 'xander-avaturn-model.glb';
+
+        function onLoad ( gltf ) {
+            shark2 = gltf.scene;
+            shark2.scale.set(0.75, 0.75, 0.5);
+            scene.add(shark2);
+            shark2.position.z = 20;
+
+            shark2Flag = true;
+        }       
+        loader.load(url, onLoad);
+        //loader.load(url2, onLoad);
+
+    }
+
+    function loadPersonModel(){
+        const loader = new THREE.GLTFLoader();
+        const url = 'xander-avaturn-model.glb';
+
+        function onLoad ( gltf ) {
+            man = gltf.scene;
+            man.scale.set(3, 4.5, 3);
+            scene.add(man);
+            man.position.z = 7;
+
+            manFlag = true;
+        }       
+        loader.load(url, onLoad);
+    }
+
+    // Create the scene. This function is called once, as soon as the page loads.
+    // The renderer has already been created before this function is called.
+
+    function createScene() {
+
+        renderer.setClearColor(0); // Set background color (0, or 0x000000, is black)
+        scene = new THREE.Scene(); // Create a new scene which we can add objects to
+
+        sub = createSub();
+        scene.add(sub);
+
+        sub.position.z -= 50;
+        sub.position.y += 8;
+
+
+        sub.scale.set(2, 2, 1.5);
+        //console.log("SUB LOCATION: ", sub.position.x, sub.position.y, sub.position.z);
+
+
+        //sub.position.x = -20;
+
+        cage = createCage();
+
+       // console.log("position x ", cage.position.x, " position y ", cage.position.y, " position z ", cage.position.z)
+
+        scene.add(cage);
+
+        loadModels();
+        //if(sharkFlag){
+            //shark.position.z = 8.5*Math.sin(2*angle)-10;                    
+            //shark.position.x = 8.5*Math.cos(2*angle)+50;   
+        //}
+
+        loadSharkModels();
+
+        //loadPersonModel();
+
+        var ground = createGround();
+        scene.add(ground);
+
+        var water = createWater();
+        scene.add(water);
+        
+        boat = createBoat();
+        scene.add(boat);
+        //var chain = createChain();
+        //scene.add(chain);
+        bubbles = createCageBubbles();
+        //console.log(bubble.position.x, bubble.position.z);
+        scene.add(bubbles);
+        bubbles.position.y -= 3.5;
+
+        // set spotlight position, direction and angle
+
+        camera.lookAt(sub);
+        var base = sub.children[0]
+
+        sphereBase = base.children[8];
+
+   }
+
+    function keyframeInterp(keyframes, cycleTime, animTime) {
+
+    var keys=[];  // array of interpolated values
+    var nKeys = keyframes[0].length-1;  // number of keys
+
+    // find time elapsed within the current cycle and scale to [0,1]
+    var time = (animTime % cycleTime) / cycleTime; 
+        
+    // find the next keyframe based on time
+    for (var i = 0; i < keyframes.length; i++) {
+        if (time < keyframes[i][0]) break;
+    }
+    i = i-1; // previous keyframe is at index i-1
+
+    // scale interpolation parameter t to interval [0,1]
+    var t = (time - keyframes[i][0]) / (keyframes[i+1][0] - keyframes[i][0]); 
+        
+    // linear interpolation between keyframes i and i+1 
+    for(var j = 1; j <= nKeys; j++)
+        keys.push((1-t) * keyframes[i][j] + t * keyframes[i+1][j]); 
+
+    return keys;
+    }
+
+    function update() {
+        mouse.update();
+        // eyeLight.position.set(camera.position.x,camera.position.y,camera.position.z); // too bright
+        // console.log(camera.position.x,camera.position.y,camera.position.z); // find best view
+    }
+
+    // Render the scene. This is called for each frame of the animation.
+    //var rotate = true;
+
+
+
+    var angle = 0.1;
+    var angle2 = 3.5;
+    //camera.position.set(70, 0, -5);
+    //var position = 90;
+    var add = 0;
+    var count = 0;
+    function render() {
+        requestAnimationFrame( render );
+        //console.log("Spotlight", spotLight.target.position.x, spotLight.target.position.y, spotLight.target.position.z);
+
+        // code for things to change here
+        /*
+        if(sharkFlag){
+            shark.position.x = 8*Math.cos(angle);
+            shark.position.z = 8*Math.sin(angle);
+            //rocket.rotation.set(0, angle, 0);
+            shark.rotation.x = Math.PI/2;
+            shark.rotation.z = angle;
+            angle += 0.01;
+        }
+        */
+        //camera.lookAt(50, 100, -5);
+
+        var difference = clock.getElapsedTime()-startTime;
+        //camera.position.set(-100, 0, -5);
+        //camera.lookAt(50, 100, -5);
+
+        if(difference%27 <3){
+            var keys = keyframeInterp(subMove, 3, clock.getElapsedTime() - startTime);
+            camera.position.set(70, 0, -5);
+            //camera.lookAt(sub);
+            sphereBase.rotation.y += .1;
+            //console.log(sphereBase);
+            camera.lookAt(0, 8, -50);
+            sub.position.x =keys[0];
+            spotLight.position.set(camera.position.x, camera.position.y, camera.position.z);
+            spotLight.target.position.set(0,8,-50);  // direction, relative to parent shade
+
+
+        } else if(difference%27 >3 && difference%27<6){
+            spotLight.position.set(camera.position.x, camera.position.y, camera.position.z);
+            sphereBase.rotation.y += .1;
+
+            camera.position.set(70, 0, -5);
+            var keys = keyframeInterp(boatMove, 3, clock.getElapsedTime() - startTime);
+            var keys2 = keyframeInterp(boatLook, 3, clock.getElapsedTime() - startTime);
+
+            boat.position.x = keys[0];
+            //if(difference < 4){
+                camera.lookAt(keys[0], keys2[1], keys2[2]);
+                spotLight.target.position.set(keys[0], keys2[1], keys2[2]); 
+
+            //}
+            //else{
+                cage.position.set(keys[0], 100, -5);
+            //}
+            //camera.lookAt(boat.position.x, boat.position.y, boat.position.z);
+            //camera.lookAt(50, 100, -5);
+            //cage.position.set(keys[0], 100, -5);
+        }
+        else if(difference%27 > 6 && difference%27 < 7){
+            spotLight.position.set(camera.position.x, camera.position.y, camera.position.z);
+            sphereBase.rotation.y += .1;
+
+            cage.position.set(100, 100, -5);
+            camera.position.set(70, 0, -5);
+            camera.lookAt(boat.position.x, boat.position.y, boat.position.z);
+            spotLight.target.position.set(boat.position.x, boat.position.y, boat.position.z);  // direction, relative to parent shade
+
+
+        }
+        else if(difference%27 >7 && difference%27 <9){
+            spotLight.position.set(camera.position.x, camera.position.y, camera.position.z);
+            sphereBase.rotation.y += .1;
+
+            camera.position.set(70, 0, -5);
+            spotLight.position.set(70, 0, -5); 
+            var keys2 = keyframeInterp(keyframeCageFall,3, clock.getElapsedTime() - startTime);
+            //var keys2 = keyframeInterp(keyframeCageFallCamera, 3, clock.getElapsedTime() - startTime);
+            //if(difference > 8){
+               // console.log("TESTING");
+                camera.position.x += 15;
+                //console.log("camera look at", keys2[0]+10);
+            //}
+          /*  else{
+                camera.position.x += 15;
+                camera.lookAt(50, 100, -5);
+                spotLight.target.position.set(50, 100, -5); 
+            }
+            */
+
+            cage.position.set(50, keys2[0], -5);
+
+            camera.lookAt(cage.position.x, cage.position.y, cage.position.z);
+            spotLight.target.position.set(cage.position.x, cage.position.y, cage.position.z);  // direction, relative to parent shade
+
+
+
+            //console.log("Time: ", clock.getElapsedTime());
+            //console.log("Initial Time: ", startTime);
+            //console.log("CAGE POSITIONS", cage.position.x, cage.position.y, cage.position.z);
+
+        }
+        else if(difference%27  > 10 && difference%27  < 13){
+            spotLight.position.set(camera.position.x, camera.position.y, camera.position.z);
+            sphereBase.rotation.y += .1;
+
+            cage.position.set(50, 0, -5);
+            camera.position.set(100, 0, -5);
+            var keys = keyframeInterp(personLookUp, 3, clock.getElapsedTime() - startTime);
+            camera.lookAt(50, keys[0], -5);
+            spotLight.target.position.set(50, keys[0], -5); 
+            bubbles.position.y += .10;
+            bubbles.position.x -= .10;
+
+            //position --;
+        }
+        else if(difference%27  > 13 && difference%27  < 17){
+            spotLight.position.set(camera.position.x, camera.position.y, camera.position.z);
+             sphereBase.rotation.y += .1;
+
+            var keys2 = keyframeInterp(personLookRight, 5, clock.getElapsedTime() - startTime);
+            cage.position.set(50, 0, -5);
+            bubbles.position.y += .10;
+            bubbles.position.x -= .10;
+            camera.lookAt(keys2[0], keys2[1], keys2[2]);
+            spotLight.target.position.set(keys2[0], keys2[1], keys2[2]); 
+            if(difference%27  == 15){
+                if(sharkFlag){
+                //shark.position.set(8.5*Math.cos(2*.1)+50, 5, 0);
+                shark.position.z = 8.5*Math.sin(2*angle)-10;                    
+                shark.position.x = 8.5*Math.cos(2*angle)+50;           
+                shark.rotation.y = -2*angle;
+                //console.log("SHARK", shark.position.x, shark.position.y, shark.position.z);
+                }
+                if(shark2Flag){
+                    shark2.position.x = 8.5*Math.cos(2*angle2)-10;
+                    shark2.position.z = 8.5*Math.sin(2*angle2)+50;
+                    shark2.position.y = 6;
+
+                    angle2 +=0.01;
+                } 
+            }
+            else if(difference%27 > 18){
+            //sphereBase.rotation.y += .1;
+
+
+                if(sharkFlag){
+                    shark.position.x = 8.5*Math.cos(2*angle)+50;
+                    shark.position.z = 8.5*Math.sin(2*angle);
+                    
+                    shark.rotation.y = -2*angle;
+                    angle += 0.01;
+                }  
+                if(shark2Flag){
+                    shark2.position.x = 8.5*Math.cos(2*angle2)+50;
+                    shark2.position.z = 8.5*Math.sin(2*angle2)+5;
+                    shark2.rotation.y = -2*angle;
+                    shark2.position.y = 6;
+
+                    angle2 +=0.01;
+                } 
+            }
+
+        }
+        else if(difference%27 > 17 && difference%27 <22){
+            spotLight.position.set(camera.position.x, camera.position.y, camera.position.z);
+            sphereBase.rotation.y += .1;
+
+            //console.log("HEY");
+            if(sharkFlag){
+            camera.lookAt(shark.position.x, shark.position.y, shark.position.z);
+            spotLight.target.position.set(shark.position.x, shark.position.y, shark.position.z); 
+            //shark.rotation.x = Math.PI/2;
+            if(sharkFlag){
+                shark.position.x = 8.5*Math.cos(2*angle)+50;
+                shark.position.z = 8.5*Math.sin(2*angle);
+                
+                shark.rotation.y = -2*angle;
+                angle += 0.01;
+            }
+            }
+            if(shark2Flag){
+                shark2.position.x = 8.5*Math.cos(2*angle2)+50;
+                shark2.position.z = 8.5*Math.sin(2*angle2);
+                shark2.rotation.y = -2*angle;
+                shark2.position.y = 6;
+
+                //console.log("Shark 2 y: ", shark2.position.y, " x: ", shark2.position.x, " z : ", shark2.position.z);
+
+                angle2 +=0.01;
+            }
+        }
+        else{
+            spotLight.position.set(camera.position.x, camera.position.y, camera.position.z);
+            cage.position.set(50, 0, -5);
+        }
+        //cage.position.y = keys[0];
+        camera.position.set(85, 0, -5);
+
+        /*
+        if(shark2Flag){
+            shark2.position.x = 8.5*Math.cos(2*angle2);
+            shark2.position.z = 8.5*Math.sin(2*angle2)+5;
+            shark2.rotation.y = -2*angle;
+            shark2.position.y = 6;
+
+            console.log("Shark 2 y: ", shark2.position.y, " x: ", shark2.position.x, " z : ", shark2.position.z);
+
+            angle2 +=0.01;
+        }
+        */
+        //camera.lookAt(200, 200, 0);
+        //camera.lookAt(0, 150, 0);
+        //camera.lookAt(0, 0, 0);
+
+        renderer.render(scene, camera);
+
+        update();
+    }
+
+ //----------------------------------------------------------------------------------
+
+    // reset canvas size and camera aspect ratio on window resize
+    function onWindowResize() {
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+    }
+    
+    // The init() function is called by the onload event when the document has loaded.
+    function main() {
+        try {
+            canvas = document.getElementById("glcanvas");
+            renderer = new THREE.WebGLRenderer( { canvas: canvas, antialias: true} );
+            // set full screen
+            renderer.setSize(window.innerWidth, window.innerHeight); 
+            // adjust on window resize
+            window.addEventListener('resize', onWindowResize);  
+        }
+        catch (e) {
+            document.getElementById("canvas-holder").innerHTML = "<h3><b>WebGL is not available.</b><h3>";
+            return;
+        }
+    
+        // create camera
+        createCamera();
+        
+        // create scene 
+        createScene();
+
+        // create lights 
+        createLights();
+
+        // render scene
+        render();
+    }
+
+</script>
+
+</head>
+<body onload="main()">
+<div id="canvas-holder">
+    <canvas id="glcanvas" width="400" height="200"></canvas>
+</div>
+</body>
+</html>
