@@ -846,7 +846,7 @@
     var count = 0;
     function render() {
         requestAnimationFrame( render );
-        
+
         if(sharkFlag && shark2Flag){
             console.log("Shark 1", shark.position.x, shark.position.y, shark.position.z);
             console.log("Shark 2", shark2.position.x, shark2.position.y, shark2.position.z);
@@ -873,8 +873,8 @@
 
         if(difference%27 <3){
             if(sharkFlag && shark2Flag){
-            shark.position.set(0, -100, 0);
-            shark2.position.set(0, -100, 0);
+            shark.position.set(0, 0, 0);
+            shark2.position.set(0, 0, 20);
             }
             var keys = keyframeInterp(subMove, 3, clock.getElapsedTime() - startTime);
             camera.position.set(70, 0, -5);
