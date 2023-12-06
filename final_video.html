@@ -866,6 +866,8 @@
         //camera.lookAt(50, 100, -5);
 
         if(difference%27 <3){
+            shark.position.set(0, -100, 0);
+            shark2.position.set(0, -100, 0);
             var keys = keyframeInterp(subMove, 3, clock.getElapsedTime() - startTime);
             camera.position.set(70, 0, -5);
             //camera.lookAt(sub);
@@ -1031,10 +1033,12 @@
                 angle2 +=0.01;
             }
         }
+        /*
         else{
             spotLight.position.set(camera.position.x, camera.position.y, camera.position.z);
             cage.position.set(50, 0, -5);
         }
+        */
         //cage.position.y = keys[0];
         camera.position.set(85, 0, -5);
 
